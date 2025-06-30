@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Drive Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .user-selection {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3498db;
+        }
+
+        .user-selection h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .dropdown-container {
+            position: relative;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 16px;
+            background: white;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .drive-structure {
+            display: none;
+            background: #ffffff;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .drive-structure h3 {
+            background: #34495e;
+            color: white;
+            padding: 15px 20px;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .tree-container {
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .tree-item {
+            display: block;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        .tree-item:hover {
+            background: #f8f9fa;
+            border-color: #3498db;
+            transform: translateX(5px);
+        }
+
+        .tree-item.selected {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .tree-item.drive {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            font-weight: 600;
+        }
+
+        .tree-item.folder {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            margin-left: 20px;
+        }
+
+        .tree-item.file {
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            margin-left: 40px;
+        }
+
+        .tree-item::before {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+            background-size: contain;
+        }
+
+        .tree-item.drive::before {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%233498db"><path d="M6 2C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2H6Z"/></svg>');
+        }
+
+        .tree-item.folder::before {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ffc107"><path d="M10 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V8C22 6.9 21.1 6 20 6H12L10 4Z"/></svg>');
+        }
+
+        .tree-item.file::before {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%236c757d"><path d="M14 2H6C4.9 2 4.01 2.9 4.01 4L4 20C4 21.1 4.89 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM16 18H8V16H16V18ZM16 14H8V12H16V14ZM13 9V3.5L18.5 9H13Z"/></svg>');
+        }
+
+        .action-panel {
+            display: none;
+            background: white;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .action-panel h4 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .action-btn {
+            padding: 12px 20px;
+            border: 2px solid #3498db;
+            background: white;
+            color: #3498db;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            background: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .action-btn.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .action-form {
+            display: none;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .execute-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-top: 15px;
+        }
+
+        .execute-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .execute-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Drive Management</h1>
+            <p>Comprehensive Google Drive and Workspace Administration</p>
+        </div>
+
+        <div class="main-content">
+            <div class="user-selection">
+                <h2>👤 Select User</h2>
+                <div class="dropdown-container">
+                    <select id="userSelect">
+                        <option value="">Loading users...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                Loading drive structure...
+            </div>
+
+            <div class="drive-structure" id="driveStructure">
+                <h3>📁 Drive Structure</h3>
+                <div class="tree-container" id="treeContainer">
+                    <!-- Drive structure will be populated here -->
+                </div>
+            </div>
+
+            <div class="action-panel" id="actionPanel">
+                <h4>🔧 Available Actions</h4>
+                <div class="action-buttons" id="actionButtons">
+                    <!-- Action buttons will be populated based on selected item -->
+                </div>
+                <div class="action-form" id="actionForm">
+                    <!-- Dynamic form content -->
+                </div>
+            </div>
+
+            <div class="alert success" id="successAlert"></div>
+            <div class="alert error" id="errorAlert"></div>
+            <div class="alert info" id="infoAlert"></div>
+        </div>
+    </div>
+
+    <script>
+        var currentUser = null;
+        var selectedItem = null;
+        var allUsers = [];
+        var availableFolders = [];
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('userSelect').addEventListener('change', handleUserSelection);
+        }
+
+        function loadUsers() {
+            google.script.run
+                .withSuccessHandler(populateUserDropdown)
+                .withFailureHandler(showError)
+                .getAllWorkspaceUsers();
+        }
+
+        function populateUserDropdown(users) {
+            allUsers = users;
+            var select = document.getElementById('userSelect');
+            select.innerHTML = '<option value="">Select a user...</option>';
+            
+            for (var i = 0; i < users.length; i++) {
+                var user = users[i];
+                var option = document.createElement('option');
+                option.value = user.primaryEmail;
+                option.textContent = user.name.fullName + ' (' + user.primaryEmail + ')';
+                select.appendChild(option);
+            }
+        }
+
+        function handleUserSelection(event) {
+            var userEmail = event.target.value;
+            if (!userEmail) {
+                document.getElementById('driveStructure').style.display = 'none';
+                document.getElementById('actionPanel').style.display = 'none';
+                return;
+            }
+
+            currentUser = userEmail;
+            loadUserDriveStructure(userEmail);
+        }
+
+        function loadUserDriveStructure(userEmail) {
+            showLoading(true);
+            hideActionPanel();
+            
+            google.script.run
+                .withSuccessHandler(displayDriveStructure)
+                .withFailureHandler(handleDriveError)
+                .getUserDriveStructure(userEmail);
+        }
+
+        function displayDriveStructure(driveData) {
+            showLoading(false);
+            var container = document.getElementById('treeContainer');
+            container.innerHTML = '';
+
+            if (driveData.error) {
+                showError(driveData.error);
+                return;
+            }
+
+            // Display drives
+            for (var i = 0; i < driveData.drives.length; i++) {
+                var drive = driveData.drives[i];
+                var driveElement = createTreeItem(drive, 'drive');
+                container.appendChild(driveElement);
+
+                // Display folders in drive
+                if (drive.folders && drive.folders.length > 0) {
+                    for (var j = 0; j < drive.folders.length; j++) {
+                        var folder = drive.folders[j];
+                        var folderElement = createTreeItem(folder, 'folder');
+                        container.appendChild(folderElement);
+
+                        // Display files in folder
+                        if (folder.files && folder.files.length > 0) {
+                            for (var k = 0; k < folder.files.length; k++) {
+                                var file = folder.files[k];
+                                var fileElement = createTreeItem(file, 'file');
+                                container.appendChild(fileElement);
+                            }
+                        }
+                    }
+                }
+
+                // Display files directly in drive
+                if (drive.files && drive.files.length > 0) {
+                    for (var j = 0; j < drive.files.length; j++) {
+                        var file = drive.files[j];
+                        var fileElement = createTreeItem(file, 'file');
+                        container.appendChild(fileElement);
+                    }
+                }
+            }
+
+            document.getElementById('driveStructure').style.display = 'block';
+        }
+
+        function createTreeItem(item, type) {
+            var div = document.createElement('div');
+            div.className = 'tree-item ' + type;
+            div.textContent = item.name;
+            div.dataset.id = item.id;
+            div.dataset.type = type;
+            div.dataset.name = item.name;
+            div.dataset.owner = item.owner || '';
+
+            div.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectItem(this);
+            });
+
+            return div;
+        }
+
+        function selectItem(element) {
+            // Remove previous selection
+            var selectedItems = document.querySelectorAll('.tree-item.selected');
+            for (var i = 0; i < selectedItems.length; i++) {
+                selectedItems[i].classList.remove('selected');
+            }
+
+            // Select current item
+            element.classList.add('selected');
+            selectedItem = {
+                id: element.dataset.id,
+                type: element.dataset.type,
+                name: element.dataset.name,
+                owner: element.dataset.owner
+            };
+
+            showActionPanel();
+        }
+
+        function showActionPanel() {
+            var panel = document.getElementById('actionPanel');
+            var buttonsContainer = document.getElementById('actionButtons');
+            
+            // Clear previous buttons
+            buttonsContainer.innerHTML = '';
+
+            // Create action buttons based on item type
+            var actions = getAvailableActions(selectedItem.type);
+            for (var i = 0; i < actions.length; i++) {
+                var action = actions[i];
+                var button = document.createElement('button');
+                button.className = 'action-btn';
+                button.textContent = action.label;
+                button.dataset.action = action.type;
+                button.addEventListener('click', function() {
+                    selectAction(this.dataset.action);
+                });
+                buttonsContainer.appendChild(button);
+            }
+
+            panel.style.display = 'block';
+        }
+
+        function getAvailableActions(itemType) {
+            var baseActions = [
+                { type: 'transfer_ownership', label: '👑 Transfer Ownership' }
+            ];
+
+            if (itemType === 'folder') {
+                return baseActions.concat([
+                    { type: 'move_folder', label: '📁 Move Folder' },
+                    { type: 'rename_folder', label: '✏️ Rename Folder' }
+                ]);
+            } else if (itemType === 'file') {
+                return baseActions.concat([
+                    { type: 'move_file', label: '📄 Move File' },
+                    { type: 'rename_file', label: '✏️ Rename File' }
+                ]);
+            } else if (itemType === 'drive') {
+                return baseActions;
+            }
+
+            return baseActions;
+        }
+
+        function selectAction(actionType) {
+            // Update button states
+            var actionBtns = document.querySelectorAll('.action-btn');
+            for (var i = 0; i < actionBtns.length; i++) {
+                actionBtns[i].classList.remove('active');
+            }
+            
+            var activeBtn = document.querySelector('[data-action="' + actionType + '"]');
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+
+            showActionForm(actionType);
+        }
+
+        function showActionForm(actionType) {
+            var formContainer = document.getElementById('actionForm');
+            var formHTML = '';
+
+            if (actionType === 'transfer_ownership') {
+                formHTML = '<div class="form-group">' +
+                    '<label>Select new owner:</label>' +
+                    '<select id="newOwner">' +
+                    '<option value="">Select user...</option>';
+                
+                for (var i = 0; i < allUsers.length; i++) {
+                    var user = allUsers[i];
+                    formHTML += '<option value="' + user.primaryEmail + '">' + 
+                        user.name.fullName + ' (' + user.primaryEmail + ')</option>';
+                }
+                
+                formHTML += '</select>' +
+                    '</div>' +
+                    '<button class="execute-btn" onclick="executeAction(\'transfer_ownership\')">' +
+                    'Transfer Ownership' +
+                    '</button>';
+                    
+                formContainer.innerHTML = formHTML;
+                formContainer.style.display = 'block';
+                
+            } else if (actionType === 'move_folder' || actionType === 'move_file') {
+                formHTML = '<div class="form-group">' +
+                    '<label>Select new location:</label>' +
+                    '<select id="newLocation">' +
+                    '<option value="">Loading available locations...</option>' +
+                    '</select>' +
+                    '</div>' +
+                    '<button class="execute-btn" onclick="executeAction(\'' + actionType + '\')">' +
+                    'Move ' + (actionType === 'move_folder' ? 'Folder' : 'File') +
+                    '</button>';
+                    
+                formContainer.innerHTML = formHTML;
+                formContainer.style.display = 'block';
+                
+                // Load available folders
+                loadAvailableFolders();
+                
+            } else if (actionType === 'rename_folder' || actionType === 'rename_file') {
+                formHTML = '<div class="form-group">' +
+                    '<label>New name:</label>' +
+                    '<input type="text" id="newName" value="' + selectedItem.name + '" />' +
+                    '</div>' +
+                    '<button class="execute-btn" onclick="executeAction(\'' + actionType + '\')">' +
+                    'Rename ' + (actionType === 'rename_folder' ? 'Folder' : 'File') +
+                    '</button>';
+                    
+                formContainer.innerHTML = formHTML;
+                formContainer.style.display = 'block';
+            }
+        }
+
+        function loadAvailableFolders() {
+            google.script.run
+                .withSuccessHandler(populateFolderDropdown)
+                .withFailureHandler(function(error) {
+                    showError('Failed to load available folders: ' + error);
+                })
+                .getAvailableFolders(currentUser);
+        }
+
+        function populateFolderDropdown(folders) {
+            availableFolders = folders;
+            var select = document.getElementById('newLocation');
+            
+            if (!select) return; // Form might have changed
+            
+            select.innerHTML = '<option value="">Select location...</option>';
+            
+            for (var i = 0; i < folders.length; i++) {
+                var folder = folders[i];
+                var option = document.createElement('option');
+                option.value = folder.id;
+                option.textContent = folder.path;
+                select.appendChild(option);
+            }
+        }
+
+        function executeAction(actionType) {
+            var actionData = {
+                action: actionType,
+                itemId: selectedItem.id,
+                itemType: selectedItem.type,
+                itemName: selectedItem.name,
+                originalOwner: selectedItem.owner,
+                userEmail: currentUser
+            };
+
+            // Get additional data based on action type
+            if (actionType === 'transfer_ownership') {
+                var newOwnerSelect = document.getElementById('newOwner');
+                if (!newOwnerSelect || !newOwnerSelect.value) {
+                    showError('Please select a new owner');
+                    return;
+                }
+                actionData.newOwner = newOwnerSelect.value;
+                
+            } else if (actionType === 'move_folder' || actionType === 'move_file') {
+                var newLocationSelect = document.getElementById('newLocation');
+                if (!newLocationSelect || !newLocationSelect.value) {
+                    showError('Please select a new location');
+                    return;
+                }
+                actionData.newLocation = newLocationSelect.value;
+                
+            } else if (actionType === 'rename_folder' || actionType === 'rename_file') {
+                var newNameInput = document.getElementById('newName');
+                if (!newNameInput || !newNameInput.value) {
+                    showError('Please enter a new name');
+                    return;
+                }
+                actionData.newName = newNameInput.value;
+            }
+
+            // Show loading and execute
+            var buttons = document.querySelectorAll('.execute-btn');
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = true;
+                buttons[i].textContent = 'Processing...';
+            }
+
+            google.script.run
+                .withSuccessHandler(handleActionSuccess)
+                .withFailureHandler(handleActionError)
+                .executeAction(actionData);
+        }
+
+        function handleActionSuccess(result) {
+            showSuccess(result.message);
+            hideActionPanel();
+            
+            // Reset button
+            var buttons = document.querySelectorAll('.execute-btn');
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = false;
+                buttons[i].textContent = buttons[i].textContent.replace('Processing...', '').trim();
+            }
+
+            // Refresh drive structure
+            loadUserDriveStructure(currentUser);
+        }
+
+        function handleActionError(error) {
+            showError(error.message || error);
+            
+            // Reset button
+            var buttons = document.querySelectorAll('.execute-btn');
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = false;
+                buttons[i].textContent = buttons[i].textContent.replace('Processing...', '').trim();
+            }
+        }
+
+        function handleDriveError(error) {
+            showLoading(false);
+            showError('Failed to load drive structure: ' + error);
+        }
+
+        function hideActionPanel() {
+            document.getElementById('actionPanel').style.display = 'none';
+            selectedItem = null;
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+
+        function showSuccess(message) {
+            var alert = document.getElementById('successAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        function showError(message) {
+            var alert = document.getElementById('errorAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        function showInfo(message) {
+            var alert = document.getElementById('infoAlert');
+            alert.textContent = message;
+            alert.style.display = 'block';
+            setTimeout(function() {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
